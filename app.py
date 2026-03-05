@@ -1,36 +1,27 @@
-from flask import Flask, request, jsonify
+import streamlit as st
 import pickle
 
-app = Flask(__name__)
-
-# Load model
-with open("svm_sentiment_model.pkl", "rb") as f:
-    model = pickle.load(f)
-
-# Load vectorizer
-with open("tfidf_vectorizer.pkl", "rb") as f:
-    vectorizer = pickle.load(f)
-
+# Load model and vectorizer
+model = pickle.load(open("svm_sentiment_model.pkl", "rb"))
+vectorizer = pickle.load(open("tfidf_vectorizer.pkl", "rb"))
 
 def predict_sentiment(text):
-
     text_tfidf = vectorizer.transform([text])
-    prediction = model.predict(text_tfidf)
+    prediction = model.predict(text_tfidf)[0]
+    probs = model.predict_proba(text_tfidf)[0]
 
-    if prediction[0] == 1:
-        return "Positive"
-    else:
-        return "Negative"
+    sentiment = "Positive" if prediction == 1 else "Negative"
 
+    return sentiment, probs[1], probs[0]
 
-@app.route("/predict", methods=["POST"])
-def predict():
+st.write("## Sentiment Analysis App for Movie Reviews")
 
-    text = request.json["text"]
-    result = predict_sentiment(text)
+user_input = st.text_area("Enter movie review:")
 
-    return jsonify({"sentiment": result})
+if st.button("Predict"):
 
+    sentiment, pos_prob, neg_prob = predict_sentiment(user_input)
 
-if __name__ == "__main__":
-    app.run(debug=True)
+    st.write("### Prediction:", sentiment)
+    st.write("### Positive Probability:", round(pos_prob, 2))
+    st.write("### Negative Probability:", round(neg_prob, 2))
