@@ -23,5 +23,4 @@ if st.button("Predict"):
     sentiment, pos_prob, neg_prob = predict_sentiment(user_input)
 
     st.write("### Prediction:", sentiment)
-    st.write("### Positive Probability:", round(pos_prob, 2))
-    st.write("### Negative Probability:", round(neg_prob, 2))
+    st.write("### Confidence Score:", round(pos_prob, 2) if sentiment == "Positive" else round(neg_prob, 2))
