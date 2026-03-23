@@ -1,26 +1,69 @@
 import streamlit as st
 import pickle
+import re
+import nltk
+from nltk.corpus import stopwords
+from nltk.stem import PorterStemmer
+
+nltk.download('stopwords')
+
+stop_words = set(stopwords.words('english'))
+stemmer = PorterStemmer()
 
 # Load model and vectorizer
 model = pickle.load(open("svm_sentiment_model.pkl", "rb"))
 vectorizer = pickle.load(open("tfidf_vectorizer.pkl", "rb"))
 
+def preprocess(text):
+    # Lowercase
+    text = text.lower()
+
+    # Remove special characters
+    text = re.sub(r'[^a-zA-Z]', ' ', text)
+
+    # Tokenization
+    words = text.split()
+
+    # Remove stopwords and apply stemming
+    words = [stemmer.stem(word) for word in words if word not in stop_words]
+
+    return " ".join(words)
+
 def predict_sentiment(text):
-    text_tfidf = vectorizer.transform([text])
+
+    # Convert text to TF-IDF features
+    cleaned = preprocess(text)
+    text_tfidf = vectorizer.transform([cleaned]).toarray()
+
+    # Predict sentiment
     prediction = model.predict(text_tfidf)[0]
+
+    # Get probabilities
     probs = model.predict_proba(text_tfidf)[0]
 
-    sentiment = "Positive" if prediction == 1 else "Negative"
+    positive_prob = probs[1]
+    negative_prob = probs[0]
+    neutral_prob = probs[2]
 
-    return sentiment, probs[1], probs[0]
+    return prediction, positive_prob, negative_prob, neutral_prob
 
-st.write("## Sentiment Analysis App for Movie Reviews")
+st.write("## Sentiment Analysis App")
 
-user_input = st.text_area("Enter movie review:")
+user_input = st.text_area("Enter text:")
 
 if st.button("Predict"):
 
-    sentiment, pos_prob, neg_prob = predict_sentiment(user_input)
+    prediction, pos_prob, neg_prob, neutral_prob = predict_sentiment(user_input)
+
+    if prediction == 1:
+        sentiment = "Positive"
+        prob = pos_prob
+    elif prediction == 0:
+        sentiment = "Negative"
+        prob = neg_prob
+    else:
+        sentiment = "Neutral"
+        prob = neutral_prob
 
     st.write("### Prediction:", sentiment)
-    st.write("### Confidence Score:", round(pos_prob, 2) if sentiment == "Positive" else round(neg_prob, 2))
+    st.write("### Confidence Score:", round(prob, 2))
